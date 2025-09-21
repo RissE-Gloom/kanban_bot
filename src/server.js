@@ -8,19 +8,28 @@ import { KanbanWebSocketServer } from './websocket.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Проверка обязательных переменных
 if (!process.env.BOT_TOKEN) {
     console.error('❌ ERROR: BOT_TOKEN is required in .env file');
     process.exit(1);
 }
 
-// Создаем HTTP сервер для обслуживания статики и WebSocket
 const server = createServer(async (req, res) => {
     try {
+        // CORS headers
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        
+        // Handle preflight requests
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+        }
+        
         const url = req.url === '/' ? '/index.html' : req.url;
         const filePath = join(__dirname, url);
         
-        // Определяем Content-Type
         let contentType = 'text/html';
         if (filePath.endsWith('.css')) contentType = 'text/css';
         if (filePath.endsWith('.js')) contentType = 'application/javascript';
@@ -29,7 +38,10 @@ const server = createServer(async (req, res) => {
         
         const content = await readFile(filePath, 'utf-8');
         
-        res.writeHead(200, { 'Content-Type': contentType });
+        res.writeHead(200, { 
+            'Content-Type': contentType,
+            'Content-Security-Policy': "default-src 'self' https:; connect-src 'self' ws: wss:;"
+        });
         res.end(content);
     } catch (error) {
         res.writeHead(404);
@@ -37,11 +49,9 @@ const server = createServer(async (req, res) => {
     }
 });
 
-// Initialize bot and WebSocket server
 const bot = new KanbanBot();
 const wss = new KanbanWebSocketServer(bot, server);
 
-// Запуск бота
 bot.launch();
 
 const PORT = process.env.PORT || 3000;
