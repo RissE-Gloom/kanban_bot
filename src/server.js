@@ -1,5 +1,13 @@
 import 'dotenv/config';
+import express from 'express';
+import { createServer } from 'http';
 import { KanbanBot } from './bot.js';
+import { KanbanWebSocketServer } from './websocket.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Проверка обязательных переменных
 if (!process.env.BOT_TOKEN) {
@@ -7,21 +15,39 @@ if (!process.env.BOT_TOKEN) {
     process.exit(1);
 }
 
-if (!process.env.CHAT_ID) {
-    console.error('❌ ERROR: CHAT_ID is required in .env file');
-    process.exit(1);
-}
+const app = express();
+const server = createServer(app);
 
+// Serve static files
+app.use(express.static(path.join(__dirname)));
+
+// Serve main HTML
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Initialize bot and WebSocket server
 const bot = new KanbanBot();
+const wss = new KanbanWebSocketServer(bot, server);
 
-// Запуск бота и WebSocket сервера
-bot.startWebSocket(process.env.PORT || 8080).launch();
+// Запуск бота
+bot.launch();
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`🚀 HTTP Server and WebSocket are running on port ${PORT}`);
+    console.log(`📋 Kanban App: http://localhost:${PORT}`);
+});
 
 // Graceful shutdown
 const shutdown = () => {
     console.log('\n🛑 Shutting down...');
     bot.stop();
-    process.exit(0);
+    wss.stop();
+    server.close(() => {
+        console.log('HTTP server closed.');
+        process.exit(0);
+    });
 };
 
 process.once('SIGINT', shutdown);
