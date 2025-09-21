@@ -6,9 +6,33 @@ export class KanbanWebSocketServer {
     #bot = null;
     #notificationChatId = null; // Добавить это поле
 
-    constructor(bot) {
+    constructor(bot, server = null) {
         this.#bot = bot;
         this.#notificationChatId = process.env.CHAT_ID || null;
+        
+        if (server) {
+            this.#wss = new WebSocketServer({ server });
+            console.log('🚀 WebSocket server attached to HTTP server');
+            this.#setupWebSocketHandlers();
+        } else {
+            this.start(8080);
+        }
+    }
+
+    #setupWebSocketHandlers() {
+        this.#wss.on('connection', (ws) => {
+            this.#clients.add(ws);
+            console.log('✅ Kanban client connected');
+
+            ws.send(JSON.stringify({
+                type: 'CONNECTION_ESTABLISHED',
+                message: 'Connected to Kanban bot server'
+            }));
+
+            ws.on('message', (data) => this.#handleMessage(ws, data));
+            ws.on('close', () => this.#handleClose(ws));
+            ws.on('error', (error) => this.#handleError(ws, error));
+        });
     }
 
     // Установить chatId для уведомлений
@@ -308,4 +332,5 @@ export class KanbanWebSocketServer {
             console.log('🛑 WebSocket server stopped');
         }
     }
+
 }
