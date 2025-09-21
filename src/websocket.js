@@ -4,11 +4,15 @@ export class KanbanWebSocketServer {
     #wss = null;
     #clients = new Set();
     #bot = null;
-    #notificationChatId = null; // Добавить это поле
+    #notificationChatId = null;
 
     constructor(bot, server = null) {
         this.#bot = bot;
         this.#notificationChatId = process.env.CHAT_ID || null;
+        
+        console.log('🔧 WebSocket Server initializing...');
+        console.log('📧 Notification Chat ID:', this.#notificationChatId);
+        console.log('🤖 Bot available:', !!this.#bot);
         
         if (server) {
             this.#wss = new WebSocketServer({ server });
@@ -33,6 +37,37 @@ export class KanbanWebSocketServer {
             ws.on('close', () => this.#handleClose(ws));
             ws.on('error', (error) => this.#handleError(ws, error));
         });
+    }
+
+    async #sendTelegramNotification(message) {
+        console.log('📨 Attempting to send notification...');
+        console.log('🤖 Bot available:', !!this.#bot);
+        console.log('💬 Chat ID available:', !!process.env.CHAT_ID);
+        
+        if (!this.#bot || !process.env.CHAT_ID) {
+            console.log('❌ Cannot send notification: bot or chat ID not set');
+            console.log('Bot:', this.#bot ? 'Available' : 'Not available');
+            console.log('Chat ID:', process.env.CHAT_ID || 'Not set');
+            return;
+        }
+        
+        try {
+            const chatId = parseInt(process.env.CHAT_ID);
+            console.log('📤 Sending to chat ID:', chatId);
+            console.log('📝 Message:', message);
+            
+            const result = await this.#bot.telegram.sendMessage(chatId, message);
+            console.log('✅ Notification sent successfully to chat:', chatId);
+            
+        } catch (error) {
+            console.error('❌ Telegram send error:', error);
+            console.error('Error details:', error.response ? error.response.description : error.message);
+            
+            if (error.response) {
+                console.error('Error code:', error.response.error_code);
+                console.error('Error description:', error.response.description);
+            }
+        }
     }
 
     // Установить chatId для уведомлений
@@ -239,12 +274,12 @@ export class KanbanWebSocketServer {
 
     #getColumnName(status) {
         const columnNames = {
-            'todo': 'Этап клина',
-            'in-progress': 'Этап перевода', 
-            'done': 'Этап редактуры',
-            'backlog': 'Бета-рид',
-            'review': 'Этап тайпа',
-            'testing': 'Клин (ПТ, Баст, айдол)'
+            'Cleaning stage': 'Этап клина',
+            'Translator stage': 'Этап перевода', 
+            'Editing stage': 'Этап редактуры',
+            'Beta editing': 'Бета-рид',
+            'Type stage': 'Этап тайпа',
+            'Cleaning is optional': 'Клин (ПТ, Баст, айдол)'
         };
         return columnNames[status] || status;
     }
@@ -334,3 +369,4 @@ export class KanbanWebSocketServer {
     }
 
 }
+
