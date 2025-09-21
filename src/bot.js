@@ -19,7 +19,23 @@ export class KanbanBot {
     this.#bot.command('status', (ctx) => this.#handleStatus(ctx));
     this.#bot.command('help', (ctx) => this.#handleHelp(ctx));
     this.#bot.command('connections', (ctx) => this.#handleConnections(ctx));
-    this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx)); // Добавьте эту команду
+    this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx));
+    this.#bot.command('app', (ctx) => this.#handleApp(ctx)); // Новая команда
+}
+
+#handleApp = (ctx) => {
+    const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+    
+    const keyboard = {
+        inline_keyboard: [[{
+            text: '🚀 Открыть Kanban App',
+            web_app: { url: appUrl }
+        }]]
+    };
+
+    ctx.reply('📋 Откройте интерактивную Kanban доску прямо в Telegram:', {
+        reply_markup: keyboard
+    });
 }
 
 handleStatusResponseReceived(chatId) {
@@ -181,4 +197,5 @@ handleStatusResponseReceived(chatId) {
         this.#wsServer.stop();
         console.log('🛑 Bot stopped');
     }
+
 }
