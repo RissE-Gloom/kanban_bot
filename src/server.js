@@ -1,13 +1,12 @@
 import 'dotenv/config';
-import express from 'express';
 import { createServer } from 'http';
+import { readFile } from 'fs/promises';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { KanbanBot } from './bot.js';
 import { KanbanWebSocketServer } from './websocket.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Проверка обязательных переменных
 if (!process.env.BOT_TOKEN) {
@@ -15,15 +14,27 @@ if (!process.env.BOT_TOKEN) {
     process.exit(1);
 }
 
-const app = express();
-const server = createServer(app);
-
-// Serve static files
-app.use(express.static(path.join(__dirname)));
-
-// Serve main HTML
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Создаем HTTP сервер для обслуживания статики и WebSocket
+const server = createServer(async (req, res) => {
+    try {
+        const url = req.url === '/' ? '/index.html' : req.url;
+        const filePath = join(__dirname, url);
+        
+        // Определяем Content-Type
+        let contentType = 'text/html';
+        if (filePath.endsWith('.css')) contentType = 'text/css';
+        if (filePath.endsWith('.js')) contentType = 'application/javascript';
+        if (filePath.endsWith('.png')) contentType = 'image/png';
+        if (filePath.endsWith('.jpg')) contentType = 'image/jpeg';
+        
+        const content = await readFile(filePath, 'utf-8');
+        
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(content);
+    } catch (error) {
+        res.writeHead(404);
+        res.end('File not found');
+    }
 });
 
 // Initialize bot and WebSocket server
@@ -35,7 +46,7 @@ bot.launch();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 HTTP Server and WebSocket are running on port ${PORT}`);
+    console.log(`🚀 HTTP Server running on port ${PORT}`);
     console.log(`📋 Kanban App: http://localhost:${PORT}`);
 });
 
