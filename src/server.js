@@ -13,6 +13,28 @@ if (!process.env.BOT_TOKEN) {
     process.exit(1);
 }
 
+// Middleware для парсинга JSON
+server.on('request', async (req, res) => {
+    // Пропускаем статические файлы
+    if (req.url === '/' || req.url.includes('.') || req.method === 'OPTIONS') {
+        return;
+    }
+
+    // API для задач
+    if (req.url === '/api/tasks' && req.method === 'GET') {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ tasks: [] })); // Заглушка
+        return;
+    }
+
+    // API для колонок
+    if (req.url === '/api/columns' && req.method === 'GET') {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ columns: [] })); // Заглушка
+        return;
+    }
+});
+
 const server = createServer(async (req, res) => {
     try {
         // CORS headers
@@ -78,3 +100,4 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
+
