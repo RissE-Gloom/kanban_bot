@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createServer } from 'http';
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { KanbanBot } from './bot.js';
@@ -13,33 +13,28 @@ if (!process.env.BOT_TOKEN) {
     process.exit(1);
 }
 
-// Middleware для парсинга JSON
-server.on('request', async (req, res) => {
-    // Пропускаем статические файлы
-    if (req.url === '/' || req.url.includes('.') || req.method === 'OPTIONS') {
-        return;
-    }
+// НОВОЕ: Файл для хранения данных
+const DATA_FILE = 'data.json';
 
-    // API для задач
-    if (req.url === '/api/tasks' && req.method === 'GET') {
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ tasks: [] })); // Заглушка
-        return;
+// НОВОЕ: Функции для работы с данными
+async function loadAppData() {
+    try {
+        const data = await readFile(DATA_FILE, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        return { tasks: [], columns: [] }; // Возвращаем по умолчанию
     }
+}
 
-    // API для колонок
-    if (req.url === '/api/columns' && req.method === 'GET') {
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ columns: [] })); // Заглушка
-        return;
-    }
-});
+async function saveAppData(data) {
+    await writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+}
 
 const server = createServer(async (req, res) => {
     try {
         // CORS headers
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         
         if (req.method === 'OPTIONS') {
@@ -47,7 +42,66 @@ const server = createServer(async (req, res) => {
             res.end();
             return;
         }
-        
+
+        // НОВОЕ: API для задач
+        if (req.url === '/api/tasks') {
+            const data = await loadAppData();
+            
+            if (req.method === 'GET') {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ tasks: data.tasks }));
+                return;
+            }
+            
+            if (req.method === 'POST') {
+                try {
+                    let body = '';
+                    req.on('data', chunk => body += chunk);
+                    req.on('end', async () => {
+                        const { tasks } = JSON.parse(body);
+                        data.tasks = tasks;
+                        await saveAppData(data);
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: true }));
+                    });
+                } catch (error) {
+                    res.writeHead(500);
+                    res.end(JSON.stringify({ error: error.message }));
+                }
+                return;
+            }
+        }
+
+        // НОВОЕ: API для колонок
+        if (req.url === '/api/columns') {
+            const data = await loadAppData();
+            
+            if (req.method === 'GET') {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ columns: data.columns }));
+                return;
+            }
+            
+            if (req.method === 'POST') {
+                try {
+                    let body = '';
+                    req.on('data', chunk => body += chunk);
+                    req.on('end', async () => {
+                        const { columns } = JSON.parse(body);
+                        data.columns = columns;
+                        await saveAppData(data);
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: true }));
+                    });
+                } catch (error) {
+                    res.writeHead(500);
+                    res.end(JSON.stringify({ error: error.message }));
+                }
+                return;
+            }
+        }
+
+        // СТАРОЕ: Обслуживание статических файлов (без изменений)
         const url = req.url === '/' ? '/index.html' : req.url;
         const filePath = join(__dirname, url);
         
@@ -67,13 +121,10 @@ const server = createServer(async (req, res) => {
     }
 });
 
-// Сначала создаем бота
+// СТАРОЕ: Создание бота и WebSocket (без изменений)
 const bot = new KanbanBot();
+const wss = new KanbanWebSocketServer(bot, server);
 
-// Затем передаем бота в WebSocket сервер
-const wss = new KanbanWebSocketServer(bot.#bot, server); // ← ПЕРЕДАЕМ this.#bot, а не bot
-
-// Запускаем бота
 bot.launch();
 
 console.log('🤖 Bot initialized and launched');
@@ -81,10 +132,9 @@ console.log('🤖 Bot initialized and launched');
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 HTTP Server running on port ${PORT}`);
-    console.log(`📋 Kanban App: http://localhost:${PORT}`);
 });
 
-// Graceful shutdown
+// СТАРОЕ: Graceful shutdown (без изменений)
 const shutdown = () => {
     console.log('\n🛑 Shutting down...');
     bot.stop();
@@ -100,4 +150,3 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
-
