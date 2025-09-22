@@ -7,27 +7,11 @@ export class KanbanBot {
     #pendingStatusRequests = new Map();
 
     constructor() {
-        console.log('🔧 Initializing bot...');
-        
-        if (!process.env.BOT_TOKEN) {
-            throw new Error('BOT_TOKEN is required');
-        }
-
         this.#bot = new Telegraf(process.env.BOT_TOKEN);
-        
-        // Проверяем, что бот инициализирован правильно
-        console.log('🤖 Bot instance created:', !!this.#bot);
-        console.log('📞 Telegram API available:', !!this.#bot.telegram);
-        
         this.#wsServer = new KanbanWebSocketServer(this.#bot);
         this.#setupCommands();
         this.#setupCallbacks();
         this.#setupErrorHandling();
-    }
-
-    // Добавляем геттер для доступа к боту извне
-    get botInstance() {
-        return this.#bot;
     }
 
     #setupCommands() {
@@ -35,24 +19,9 @@ export class KanbanBot {
     this.#bot.command('status', (ctx) => this.#handleStatus(ctx));
     this.#bot.command('help', (ctx) => this.#handleHelp(ctx));
     this.#bot.command('connections', (ctx) => this.#handleConnections(ctx));
-    this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx));
-    this.#bot.command('app', (ctx) => this.#handleApp(ctx)); // Новая команда
+    this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx)); // Добавьте эту команду
 }
 
-#handleApp = (ctx) => {
-    const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
-    
-    const keyboard = {
-        inline_keyboard: [[{
-            text: '🚀 Открыть Kanban App',
-            web_app: { url: appUrl }
-        }]]
-    };
-
-    ctx.reply('📋 Откройте интерактивную Kanban доску прямо в Telegram:', {
-        reply_markup: keyboard
-    });
-}
 
 handleStatusResponseReceived(chatId) {
         if (this.#pendingStatusRequests.has(chatId)) {
@@ -213,7 +182,4 @@ handleStatusResponseReceived(chatId) {
         this.#wsServer.stop();
         console.log('🛑 Bot stopped');
     }
-
 }
-
-
