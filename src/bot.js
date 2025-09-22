@@ -25,6 +25,11 @@ export class KanbanBot {
         this.#setupErrorHandling();
     }
 
+    // Добавляем геттер для доступа к боту извне
+    get botInstance() {
+        return this.#bot;
+    }
+
     #setupCommands() {
     this.#bot.command('start', (ctx) => this.#handleStart(ctx));
     this.#bot.command('status', (ctx) => this.#handleStatus(ctx));
@@ -210,4 +215,5 @@ handleStatusResponseReceived(chatId) {
     }
 
 }
+
 
