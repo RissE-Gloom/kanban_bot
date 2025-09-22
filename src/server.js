@@ -45,21 +45,16 @@ const server = createServer(async (req, res) => {
     }
 });
 
-// Сначала создаем бота и запускаем его
+// Сначала создаем бота
 const bot = new KanbanBot();
-bot.launch(); // ← ЗАПУСКАЕМ БОТА ПЕРВЫМ!
 
-// Затем передаем ЗАПУЩЕННОГО бота в WebSocket сервер
-const wss = new KanbanWebSocketServer(bot, server);
+// Затем передаем бота в WebSocket сервер
+const wss = new KanbanWebSocketServer(bot.#bot, server); // ← ПЕРЕДАЕМ this.#bot, а не bot
+
+// Запускаем бота
+bot.launch();
 
 console.log('🤖 Bot initialized and launched');
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🚀 HTTP Server running on port ${PORT}`);
-});
-
-bot.launch();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
@@ -83,6 +78,3 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
-
-
-
