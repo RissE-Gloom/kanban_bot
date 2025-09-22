@@ -17,15 +17,15 @@ const server = createServer(async (req, res) => {
     try {
         // CORS headers
         res.setHeader('Access-Control-Allow-Origin', 'https://risse-gloom.github.io');
-res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         
         // Handle preflight requests
         if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-}
+        res.writeHead(200);
+        res.end();
+        return;
+    }
         
         const url = req.url === '/' ? '/index.html' : req.url;
         const filePath = join(__dirname, url);
@@ -76,4 +76,5 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
+
 
