@@ -14,8 +14,12 @@ if (!process.env.CHAT_ID) {
 
 const bot = new KanbanBot();
 
-// Запуск бота и WebSocket сервера
-bot.startWebSocket(process.env.PORT || 3000).launch();
+// Render использует порт из process.env.PORT
+const port = process.env.PORT || 8080;
+bot.startWebSocket(port).launch();
+
+console.log('🚀 Kanban Bot Server started');
+console.log(`📡 WebSocket server on port ${port}`);
 
 // Graceful shutdown
 const shutdown = () => {
@@ -29,4 +33,3 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
-
