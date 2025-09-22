@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: kanban-bot
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: BOT_TOKEN
+        fromSecret: BOT_TOKEN
+      - key: CHAT_ID
+        fromSecret: CHAT_ID
+      - key: PORT
+        value: 3000
