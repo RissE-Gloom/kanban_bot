@@ -15,7 +15,7 @@ if (!process.env.CHAT_ID) {
 const bot = new KanbanBot();
 
 // Запуск бота и WebSocket сервера
-bot.startWebSocket(process.env.PORT || 8080).launch();
+bot.startWebSocket(process.env.PORT || 3000).launch();
 
 // Graceful shutdown
 const shutdown = () => {
@@ -29,3 +29,4 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
+
