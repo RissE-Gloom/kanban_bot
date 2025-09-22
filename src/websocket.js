@@ -39,6 +39,8 @@ export class KanbanWebSocketServer {
         });
     }
 
+    const wss = new KanbanWebSocketServer(bot.botInstance, server); // ← Используем геттер
+
     async #sendTelegramNotification(message) {
     console.log('📨 Attempting to send notification...');
     console.log('🤖 Bot available:', !!this.#bot);
@@ -380,5 +382,6 @@ export class KanbanWebSocketServer {
     }
 
 }
+
 
 
