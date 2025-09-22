@@ -40,35 +40,46 @@ export class KanbanWebSocketServer {
     }
 
     async #sendTelegramNotification(message) {
-        console.log('📨 Attempting to send notification...');
-        console.log('🤖 Bot available:', !!this.#bot);
-        console.log('💬 Chat ID available:', !!process.env.CHAT_ID);
+    console.log('📨 Attempting to send notification...');
+    console.log('🤖 Bot available:', !!this.#bot);
+    console.log('📞 Telegram API available:', this.#bot ? !!this.#bot.telegram : 'No bot');
+    
+    if (!this.#bot || !this.#bot.telegram) {
+        console.log('❌ Cannot send notification: bot or telegram API not available');
+        console.log('Bot:', this.#bot ? 'Available' : 'Not available');
+        console.log('Telegram API:', this.#bot && this.#bot.telegram ? 'Available' : 'Not available');
+        return;
+    }
+    
+    if (!process.env.CHAT_ID) {
+        console.log('❌ CHAT_ID not set');
+        return;
+    }
+    
+    try {
+        const chatId = parseInt(process.env.CHAT_ID);
+        console.log('📤 Sending to chat ID:', chatId);
         
-        if (!this.#bot || !process.env.CHAT_ID) {
-            console.log('❌ Cannot send notification: bot or chat ID not set');
-            console.log('Bot:', this.#bot ? 'Available' : 'Not available');
-            console.log('Chat ID:', process.env.CHAT_ID || 'Not set');
+        // ПРЯМАЯ ПРОВЕРКА - пытаемся получить информацию о боте
+        try {
+            const botInfo = await this.#bot.telegram.getMe();
+            console.log('✅ Bot info:', botInfo.username);
+        } catch (botError) {
+            console.error('❌ Cannot access bot API:', botError.message);
             return;
         }
         
-        try {
-            const chatId = parseInt(process.env.CHAT_ID);
-            console.log('📤 Sending to chat ID:', chatId);
-            console.log('📝 Message:', message);
-            
-            const result = await this.#bot.telegram.sendMessage(chatId, message);
-            console.log('✅ Notification sent successfully to chat:', chatId);
-            
-        } catch (error) {
-            console.error('❌ Telegram send error:', error);
-            console.error('Error details:', error.response ? error.response.description : error.message);
-            
-            if (error.response) {
-                console.error('Error code:', error.response.error_code);
-                console.error('Error description:', error.response.description);
-            }
+        const result = await this.#bot.telegram.sendMessage(chatId, message);
+        console.log('✅ Notification sent successfully to chat:', chatId);
+        
+    } catch (error) {
+        console.error('❌ Telegram send error:', error.message);
+        if (error.response) {
+            console.error('Error code:', error.response.error_code);
+            console.error('Error description:', error.response.description);
         }
     }
+}
 
     // Установить chatId для уведомлений
     setNotificationChatId(chatId) {
@@ -369,4 +380,5 @@ export class KanbanWebSocketServer {
     }
 
 }
+
 
