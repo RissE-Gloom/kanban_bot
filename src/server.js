@@ -16,16 +16,15 @@ if (!process.env.BOT_TOKEN) {
 const server = createServer(async (req, res) => {
     try {
         // CORS headers
-        res.setHeader('Access-Control-Allow-Origin', 'https://risse-gloom.github.io');
+        res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         
-        // Handle preflight requests
         if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
-        return;
-    }
+            res.writeHead(200);
+            res.end();
+            return;
+        }
         
         const url = req.url === '/' ? '/index.html' : req.url;
         const filePath = join(__dirname, url);
@@ -38,10 +37,7 @@ const server = createServer(async (req, res) => {
         
         const content = await readFile(filePath, 'utf-8');
         
-        res.writeHead(200, { 
-            'Content-Type': contentType,
-            'Content-Security-Policy': "default-src 'self' https:; connect-src 'self' ws: wss:;"
-        });
+        res.writeHead(200, { 'Content-Type': contentType });
         res.end(content);
     } catch (error) {
         res.writeHead(404);
@@ -49,8 +45,19 @@ const server = createServer(async (req, res) => {
     }
 });
 
+// Сначала создаем бота и запускаем его
 const bot = new KanbanBot();
+bot.launch(); // ← ЗАПУСКАЕМ БОТА ПЕРВЫМ!
+
+// Затем передаем ЗАПУЩЕННОГО бота в WebSocket сервер
 const wss = new KanbanWebSocketServer(bot, server);
+
+console.log('🤖 Bot initialized and launched');
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`🚀 HTTP Server running on port ${PORT}`);
+});
 
 bot.launch();
 
@@ -76,5 +83,6 @@ process.once('SIGTERM', shutdown);
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
+
 
 
