@@ -7,7 +7,18 @@ export class KanbanBot {
     #pendingStatusRequests = new Map();
 
     constructor() {
+        console.log('🔧 Initializing bot...');
+        
+        if (!process.env.BOT_TOKEN) {
+            throw new Error('BOT_TOKEN is required');
+        }
+
         this.#bot = new Telegraf(process.env.BOT_TOKEN);
+        
+        // Проверяем, что бот инициализирован правильно
+        console.log('🤖 Bot instance created:', !!this.#bot);
+        console.log('📞 Telegram API available:', !!this.#bot.telegram);
+        
         this.#wsServer = new KanbanWebSocketServer(this.#bot);
         this.#setupCommands();
         this.#setupCallbacks();
@@ -199,3 +210,4 @@ handleStatusResponseReceived(chatId) {
     }
 
 }
+
