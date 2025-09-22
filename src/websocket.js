@@ -297,34 +297,6 @@ export class KanbanWebSocketServer {
         return columnNames[status] || status;
     }
 
-    async #sendTelegramNotification(message) {
-    if (!this.#bot || !process.env.CHAT_ID) {
-        console.log('❌ Cannot send notification: bot or chat ID not set');
-        return;
-    }
-    
-    try {
-        // Преобразуем CHAT_ID в число
-        const chatId = parseInt(process.env.CHAT_ID);
-        console.log('📤 Sending to chat ID:', chatId);
-        
-        const result = await this.#bot.telegram.sendMessage(chatId, message);
-        console.log('✅ Notification sent successfully to chat:', chatId);
-        
-    } catch (error) {
-        console.error('❌ Telegram send error:', error);
-        console.error('Error details:', error.response || error.message);
-        
-        // Добавим дополнительную диагностику
-        if (error.response && error.response.error_code === 400) {
-            console.error('💡 Возможные причины:');
-            console.error('1. Бот не добавлен в чат');
-            console.error('2. Неправильный CHAT_ID');
-            console.error('3. Бот заблокирован в чате');
-        }
-    }
-}
-
     #handleClose(ws) {
         this.#clients.delete(ws);
         console.log('❌ Kanban client disconnected');
@@ -382,6 +354,7 @@ export class KanbanWebSocketServer {
     }
 
 }
+
 
 
 
