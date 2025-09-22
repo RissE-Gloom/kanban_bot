@@ -4,84 +4,12 @@ export class KanbanWebSocketServer {
     #wss = null;
     #clients = new Set();
     #bot = null;
-    #notificationChatId = null;
+    #notificationChatId = null; // Добавить это поле
 
-    constructor(bot, server = null) {
+    constructor(bot) {
         this.#bot = bot;
         this.#notificationChatId = process.env.CHAT_ID || null;
-        
-        console.log('🔧 WebSocket Server initializing...');
-        console.log('📧 Notification Chat ID:', this.#notificationChatId);
-        console.log('🤖 Bot available:', !!this.#bot);
-        
-        if (server) {
-            this.#wss = new WebSocketServer({ server });
-            console.log('🚀 WebSocket server attached to HTTP server');
-            this.#setupWebSocketHandlers();
-        } else {
-            this.start(8080);
-        }
     }
-
-    #setupWebSocketHandlers() {
-        this.#wss.on('connection', (ws) => {
-            this.#clients.add(ws);
-            console.log('✅ Kanban client connected');
-
-            ws.send(JSON.stringify({
-                type: 'CONNECTION_ESTABLISHED',
-                message: 'Connected to Kanban bot server'
-            }));
-
-            ws.on('message', (data) => this.#handleMessage(ws, data));
-            ws.on('close', () => this.#handleClose(ws));
-            ws.on('error', (error) => this.#handleError(ws, error));
-        });
-    }
-
-    const wss = new KanbanWebSocketServer(bot.botInstance, server); // ← Используем геттер
-
-    async #sendTelegramNotification(message) {
-    console.log('📨 Attempting to send notification...');
-    console.log('🤖 Bot available:', !!this.#bot);
-    console.log('📞 Telegram API available:', this.#bot ? !!this.#bot.telegram : 'No bot');
-    
-    if (!this.#bot || !this.#bot.telegram) {
-        console.log('❌ Cannot send notification: bot or telegram API not available');
-        console.log('Bot:', this.#bot ? 'Available' : 'Not available');
-        console.log('Telegram API:', this.#bot && this.#bot.telegram ? 'Available' : 'Not available');
-        return;
-    }
-    
-    if (!process.env.CHAT_ID) {
-        console.log('❌ CHAT_ID not set');
-        return;
-    }
-    
-    try {
-        const chatId = parseInt(process.env.CHAT_ID);
-        console.log('📤 Sending to chat ID:', chatId);
-        
-        // ПРЯМАЯ ПРОВЕРКА - пытаемся получить информацию о боте
-        try {
-            const botInfo = await this.#bot.telegram.getMe();
-            console.log('✅ Bot info:', botInfo.username);
-        } catch (botError) {
-            console.error('❌ Cannot access bot API:', botError.message);
-            return;
-        }
-        
-        const result = await this.#bot.telegram.sendMessage(chatId, message);
-        console.log('✅ Notification sent successfully to chat:', chatId);
-        
-    } catch (error) {
-        console.error('❌ Telegram send error:', error.message);
-        if (error.response) {
-            console.error('Error code:', error.response.error_code);
-            console.error('Error description:', error.response.description);
-        }
-    }
-}
 
     // Установить chatId для уведомлений
     setNotificationChatId(chatId) {
@@ -287,15 +215,43 @@ export class KanbanWebSocketServer {
 
     #getColumnName(status) {
         const columnNames = {
-            'Cleaning stage': 'Этап клина',
-            'Translator stage': 'Этап перевода', 
-            'Editing stage': 'Этап редактуры',
-            'Beta editing': 'Бета-рид',
-            'Type stage': 'Этап тайпа',
-            'Cleaning is optional': 'Клин (ПТ, Баст, айдол)'
+            'todo': 'Этап клина',
+            'in-progress': 'Этап перевода', 
+            'done': 'Этап редактуры',
+            'backlog': 'Бета-рид',
+            'review': 'Этап тайпа',
+            'testing': 'Клин (ПТ, Баст, айдол)'
         };
         return columnNames[status] || status;
     }
+
+    async #sendTelegramNotification(message) {
+    if (!this.#bot || !process.env.CHAT_ID) {
+        console.log('❌ Cannot send notification: bot or chat ID not set');
+        return;
+    }
+    
+    try {
+        // Преобразуем CHAT_ID в число
+        const chatId = parseInt(process.env.CHAT_ID);
+        console.log('📤 Sending to chat ID:', chatId);
+        
+        const result = await this.#bot.telegram.sendMessage(chatId, message);
+        console.log('✅ Notification sent successfully to chat:', chatId);
+        
+    } catch (error) {
+        console.error('❌ Telegram send error:', error);
+        console.error('Error details:', error.response || error.message);
+        
+        // Добавим дополнительную диагностику
+        if (error.response && error.response.error_code === 400) {
+            console.error('💡 Возможные причины:');
+            console.error('1. Бот не добавлен в чат');
+            console.error('2. Неправильный CHAT_ID');
+            console.error('3. Бот заблокирован в чате');
+        }
+    }
+}
 
     #handleClose(ws) {
         this.#clients.delete(ws);
@@ -352,9 +308,4 @@ export class KanbanWebSocketServer {
             console.log('🛑 WebSocket server stopped');
         }
     }
-
 }
-
-
-
-
