@@ -14,12 +14,8 @@ if (!process.env.CHAT_ID) {
 
 const bot = new KanbanBot();
 
-// Render использует порт из process.env.PORT
-const port = process.env.PORT || 8080;
-bot.startWebSocket(port).launch();
-
-console.log('🚀 Kanban Bot Server started');
-console.log(`📡 WebSocket server on port ${port}`);
+// Запуск бота и WebSocket сервера
+bot.startWebSocket(process.env.PORT || 8080).launch();
 
 // Graceful shutdown
 const shutdown = () => {
