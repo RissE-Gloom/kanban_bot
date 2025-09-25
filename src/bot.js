@@ -19,22 +19,9 @@ export class KanbanBot {
     this.#bot.command('status', (ctx) => this.#handleStatus(ctx));
     this.#bot.command('help', (ctx) => this.#handleHelp(ctx));
     this.#bot.command('connections', (ctx) => this.#handleConnections(ctx));
-    this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx)); 
+    this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx)); // Добавьте эту команду
 }
 
-this.#bot.command('kanban', (ctx) => {
-    const webAppUrl = 'https://your-render-app.onrender.com/mini-app.html';
-    const button = {
-        text: '📋 Открыть Kanban',
-        web_app: { url: webAppUrl }
-    };
-    
-    ctx.reply('Откройте Kanban доску:', {
-        reply_markup: {
-            inline_keyboard: [[button]]
-        }
-    });
-});
 
 handleStatusResponseReceived(chatId) {
         if (this.#pendingStatusRequests.has(chatId)) {
@@ -196,4 +183,3 @@ handleStatusResponseReceived(chatId) {
         console.log('🛑 Bot stopped');
     }
 }
-
