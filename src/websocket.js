@@ -4,13 +4,11 @@ export class KanbanWebSocketServer {
     #wss = null;
     #clients = new Set();
     #bot = null;
-    #notificationChatId = null; // Добавить это поле
+    #notificationChatId = null; 
 
     constructor(bot) {
         this.#bot = bot;
         this.#notificationChatId = process.env.CHAT_ID || null;
-        this.#browserClients = new Set(); // Клиенты из браузера
-        this.#miniAppClients = new Set(); // Клиенты из Mini App
     }
 
     // Установить chatId для уведомлений
@@ -23,39 +21,31 @@ export class KanbanWebSocketServer {
         return this.#clients.size;
     }
 
-    start(port = 3000) {
-        this.#wss = new WebSocketServer({ port });
+    start(port = 8080) {
+        this.#wss = new WebSocketServer({ 
+        port,
+        verifyClient: (info, callback) => {
+            // Разрешаем все origin для демо, в продакшене укажите конкретные домены
+            callback(true);
+        }
+    });
         
-        this.#wss.on('connection', (ws, request) => {
-    // Определяем тип клиента по URL параметрам
-    const url = new URL(request.url, `http://${request.headers.host}`);
-    const clientType = url.searchParams.get('clientType') || 'browser';
-    
-    if (clientType === 'miniApp') {
-        this.#miniAppClients.add(ws);
-        console.log('✅ Telegram Mini App connected');
-        ws.clientType = 'miniApp';
-    } else {
-        this.#browserClients.add(ws);
-        console.log('✅ Kanban browser client connected');
-        ws.clientType = 'browser';
-    }
+        this.#wss.on('connection', (ws) => {
+            this.#clients.add(ws);
+            console.log('✅ Kanban client connected');
 
-    ws.send(JSON.stringify({
-        type: 'CONNECTION_ESTABLISHED',
-        clientType: ws.clientType,
-        message: 'Connected to Kanban bot server'
-    }));
+            ws.send(JSON.stringify({
+                type: 'CONNECTION_ESTABLISHED',
+                message: 'Connected to Kanban bot server'
+            }));
 
-    ws.on('message', (data) => this.#handleMessage(ws, data));
-    ws.on('close', () => this.#handleClose(ws));
-    ws.on('error', (error) => this.#handleError(ws, error));
-});
+            ws.on('message', (data) => this.#handleMessage(ws, data));
+            ws.on('close', () => this.#handleClose(ws));
+            ws.on('error', (error) => this.#handleError(ws, error));
+        });
 
         console.log(`🚀 WebSocket server started on port ${port}`);
         return this;
-    
-    
     }
 
     #handleMessage(ws, data) {
@@ -70,30 +60,6 @@ export class KanbanWebSocketServer {
 
     #processMessage(message, ws) {
         switch (message.type) {
-        case 'TASK_MOVED':
-        case 'TASK_CREATED':
-        case 'TASK_UPDATED':
-        case 'TASK_DELETED':
-                // 👇 Отправляем изменения в противоположную сторону
-            if (ws.clientType === 'browser') {
-                this.broadcastToMiniApps(message);
-            } else if (ws.clientType === 'miniApp') {
-                this.broadcastToBrowsers(message);
-            }
-            break;
-            case 'REQUEST_SYNC':
-            // 👇 Запросы синхронизации только от Mini App к браузерам
-            if (ws.clientType === 'miniApp') {
-                this.broadcastToBrowsers(message);
-            }
-            break;
-            
-        case 'SYNC_DATA':
-            // 👇 Данные синхронизации от браузеров к Mini App
-            if (ws.clientType === 'browser') {
-                this.broadcastToMiniApps(message);
-            }
-            break;
             case 'TASK_MOVED':
                 this.#sendTelegramNotification(this.#formatTaskMovedMessage(message));
                 break;
@@ -116,28 +82,6 @@ export class KanbanWebSocketServer {
         }
     }
 
-    #handleSyncData(message, ws) {
-    // Если данные пришли из браузера - синхронизируем с Mini App
-    if (ws.clientType === 'browser') {
-        this.broadcastToMiniApps(message);
-    }
-    // Если из Mini App - синхронизируем с браузером
-    else if (ws.clientType === 'miniApp') {
-        this.broadcastToBrowsers(message);
-    }
-}
-
-    #handleRequestSync(message, ws) {
-    // Запрос актуальных данных - перенаправляем всем браузерам
-    if (ws.clientType === 'miniApp') {
-        this.broadcastToBrowsers({
-            type: 'SYNC_REQUESTED',
-            requestId: message.requestId,
-            timestamp: new Date().toISOString()
-        });
-    }
-}
-    
     #formatTaskMovedMessage(message) {
         return `
 🔄 Перемещение карточки
@@ -316,13 +260,8 @@ export class KanbanWebSocketServer {
 }
 
     #handleClose(ws) {
-        if (ws.clientType === 'miniApp') {
-        this.#miniAppClients.delete(ws);
-        console.log('❌ Telegram Mini App disconnected');
-    } else {
-        this.#browserClients.delete(ws);
-        console.log('❌ Kanban browser client disconnected');
-    }
+        this.#clients.delete(ws);
+        console.log('❌ Kanban client disconnected');
     }
 
     #handleError(ws, error) {
@@ -330,28 +269,6 @@ export class KanbanWebSocketServer {
         this.#clients.delete(ws);
     }
 
-    broadcastToBrowsers(message) {
-    this.#broadcastToSet(this.#browserClients, message, 'browsers');
-}
-
-broadcastToMiniApps(message) {
-    this.#broadcastToSet(this.#miniAppClients, message, 'miniApps');
-}
-
-#broadcastToSet(clientSet, message, targetName) {
-    const data = JSON.stringify(message);
-    let sentCount = 0;
-
-    clientSet.forEach(client => {
-        if (client.readyState === 1) {
-            client.send(data);
-            sentCount++;
-        }
-    });
-
-    console.log(`📤 Broadcast to ${sentCount} ${targetName}: ${message.type}`);
-}
-    
     // Запрос общего статуса
     requestStatus(chatId) {
         const request = {
@@ -398,5 +315,3 @@ broadcastToMiniApps(message) {
         }
     }
 }
-
-
