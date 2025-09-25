@@ -1,4 +1,5 @@
 import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
 
 export class KanbanWebSocketServer {
     #wss = null;
@@ -22,13 +23,25 @@ export class KanbanWebSocketServer {
     }
 
     start(port = 8080) {
+        const server = createServer((req, res) => {
+            // Basic health check endpoint
+            if (req.url === '/health') {
+                res.writeHead(200);
+                res.end('OK');
+                return;
+            }
+            res.writeHead(404);
+            res.end();
+        });
+
         this.#wss = new WebSocketServer({ 
-        port,
-        verifyClient: (info, callback) => {
-            // Разрешаем все origin для демо, в продакшене укажите конкретные домены
-            callback(true);
-        }
-    });
+            server: server,
+            path: '/ws' // Явно указываем путь для WebSocket
+        });
+
+        server.listen(port, () => {
+            console.log(`🚀 WebSocket server started on port ${port}`);
+        });
         
         this.#wss.on('connection', (ws) => {
             this.#clients.add(ws);
@@ -315,3 +328,4 @@ export class KanbanWebSocketServer {
         }
     }
 }
+
