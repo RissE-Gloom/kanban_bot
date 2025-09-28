@@ -80,20 +80,6 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
         try {
             const clientCount = this.#wsServer.getClientCount();
             
-            // if (clientCount === 0) {
-            //     ctx.reply('❌ *Нет подключенных Kanban досок*\n\nОткройте Kanban доску в браузере для подключения.', {
-            //         parse_mode: 'Markdown'
-            //     });
-            //     return;
-            // }
-
-            // const message = await ctx.reply('🔄 *Запрашиваю список колонок...*', {
-            //     parse_mode: 'Markdown'
-            // });
-
-            // this.#pendingStatusRequests.set(ctx.chat.id, message.message_id);
-
-            // Запрашиваем статус для показа меню выбора
             this.#wsServer.requestStatus(ctx.chat.id);
 
             // Таймаут на ответ
@@ -181,6 +167,7 @@ https://necromancertasks.onrender.com/ - перейти напрямую на с
         console.log('🛑 Bot stopped');
     }
 }
+
 
 
 
