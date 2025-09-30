@@ -119,15 +119,22 @@ export class KanbanWebSocketServer {
     }
 
     #handleStatusResponse(message) {
-        if (!message.columns || !Array.isArray(message.columns)) {
-            console.error('Invalid status response format');
-            return;
-        }
+    if (!message.columns || !Array.isArray(message.columns)) {
+        console.error('Invalid status response format');
+        return;
+    }
 
-        if (message.chatId && this.#bot) {
+    if (message.chatId && this.#bot) {
+        // Добавим защиту, чтобы на каждую команду отвечать только один раз
+        if (this.#pendingStatusRequests.has(message.chatId)) {
             this.#sendColumnSelection(message.chatId, message.columns);
+            this.#pendingStatusRequests.delete(message.chatId); // очищаем чтобы второй ответ проигнорировался
+        } else {
+            console.log('⏸️ Второй ответ STATUS_RESPONSE проигнорирован для chatId', message.chatId);
         }
     }
+}
+
 
     #handleColumnStatusResponse(message) {
         if (!message.column || !message.chatId) return;
@@ -328,4 +335,5 @@ export class KanbanWebSocketServer {
         }
     }
 }
+
 
