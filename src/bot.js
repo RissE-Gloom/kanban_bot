@@ -158,6 +158,7 @@ https://necromancertasks.onrender.com/ - перейти напрямую на с
 
     #setupErrorHandling() {
         this.#bot.catch((error, ctx) => {
+            // Bot service redeploy trigger: 2026-01-24T20:13:00
             console.error('Bot error:', error);
             ctx.reply('❌ Произошла ошибка при обработке команды');
         });
