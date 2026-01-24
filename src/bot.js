@@ -82,7 +82,15 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
 • Обновление карточек
         `;
 
-        ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
+        ctx.reply(welcomeMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📂 Открыть доску', url: 'https://necromancertasks.onrender.com/' }],
+                    [{ text: '📊 Статус', callback_data: 'status_all' }]
+                ]
+            }
+        });
     }
 
     #handleStatus = async (ctx) => {
