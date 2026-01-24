@@ -102,10 +102,7 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
             // Таймаут на ответ
             setTimeout(() => {
                 if (this.#pendingStatusRequests.has(ctx.chat.id)) {
-                    ctx.telegram.editMessageText(
-                        ctx.chat.id,
-                        message.message_id,
-                        null,
+                    ctx.reply(
                         '⏰ *Не получен ответ от Kanban доски*\n\nПроверьте что доска открыта в браузере.',
                         { parse_mode: 'Markdown' }
                     ).catch(console.error);
