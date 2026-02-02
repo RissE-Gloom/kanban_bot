@@ -20,8 +20,12 @@ export class KanbanBot {
         this.#bot.command('notifications', (ctx) => this.#handleManageNotifications(ctx));
         this.#bot.command('help', (ctx) => this.#handleHelp(ctx));
 
-        // Обработка простого упоминания бота в группе (@username)
-        this.#bot.mention((ctx) => this.#handleStart(ctx));
+        // Обработка упоминания ТОЛЬКО этого бота в группе (не любых пользователей)
+        const botUsername = process.env.BOT_USERNAME?.replace('@', '') || '';
+        if (botUsername) {
+            // Проверяем именно упоминание бота (например @kanban_bot)
+            this.#bot.hears(new RegExp(`@${botUsername}(?:\\s|$)`), (ctx) => this.#handleStart(ctx));
+        }
     }
 
 
