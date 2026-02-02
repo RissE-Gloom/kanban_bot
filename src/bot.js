@@ -18,6 +18,10 @@ export class KanbanBot {
         this.#bot.command('start', (ctx) => this.#handleStart(ctx));
         this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx));
         this.#bot.command('notifications', (ctx) => this.#handleManageNotifications(ctx));
+        this.#bot.command('help', (ctx) => this.#handleHelp(ctx));
+
+        // Обработка простого упоминания бота в группе (@username)
+        this.#bot.mention((ctx) => this.#handleStart(ctx));
     }
 
 
