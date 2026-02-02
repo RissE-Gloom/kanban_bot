@@ -162,7 +162,15 @@ export class KanbanWebSocketServer {
         }
 
         if (message.chatId && this.#bot) {
-            this.#sendColumnSelection(message.chatId, message.columns, message.labels);
+            // Сохраняем актуальные данные
+            if (message.labels) this._lastLabels = message.labels;
+            if (message.columns) this._lastColumns = message.columns;
+
+            if (message.reason === 'subscription') {
+                this.sendLabelSelectionMenu(message.chatId);
+            } else {
+                this.#sendColumnSelection(message.chatId, message.columns, message.labels);
+            }
         }
     }
 
@@ -185,11 +193,11 @@ export class KanbanWebSocketServer {
                         text: `📂 ${column.title} (${column.taskCount})`,
                         callback_data: `status_column_${column.status}`
                     }]),
-                    // Кнопка для настройки уведомлений
-                    [{
-                        text: '🔔 Настроить уведомления по меткам',
-                        callback_data: 'manage_subs_start'
-                    }]
+                    // Кнопки для каждой колонки
+                    ...columns.map(column => [{
+                        text: `📂 ${column.title} (${column.taskCount})`,
+                        callback_data: `status_column_${column.status}`
+                    }])
                 ]
             };
 
@@ -216,34 +224,59 @@ export class KanbanWebSocketServer {
         }
     }
 
-    sendSubscriptionMenu(chatId) {
-        if (!this._lastLabels || !this._lastColumns) {
-            this.#bot.telegram.sendMessage(chatId, '❌ Данные еще не загружены. Пожалуйста, подождите...');
+    sendLabelSelectionMenu(chatId) {
+        if (!this._lastLabels) {
+            this.#bot.telegram.sendMessage(chatId, '❌ Список меток пуст или еще не загружен. Попробуйте позже.');
             return;
         }
 
         const keyboard = {
-            inline_keyboard: []
+            inline_keyboard: this._lastLabels.map(label => ([{
+                text: `🏷️ ${label}`,
+                callback_data: `sub_select_label_${label}`
+            }]))
         };
-
-        // Создаем сетку кнопок: Метка + Колонка
-        this._lastLabels.forEach(label => {
-            this._lastColumns.forEach(column => {
-                keyboard.inline_keyboard.push([{
-                    text: `🔔 ${label} ➡️ ${column.title}`,
-                    callback_data: `sub_label_${label}|${column.status}`
-                }]);
-            });
-        });
 
         this.#bot.telegram.sendMessage(
             chatId,
-            '⚙️ *Выберите комбинацию Метка + Колонка для подписки:*',
+            '🏷️ *Выберите метку для подписки:*',
             {
                 parse_mode: 'Markdown',
                 reply_markup: keyboard
             }
         );
+    }
+
+    sendColumnSelectionMenu(chatId, label) {
+        if (!this._lastColumns) {
+            this.#bot.telegram.sendMessage(chatId, '❌ Список колонок пуст или еще не загружен.');
+            return;
+        }
+
+        const keyboard = {
+            inline_keyboard: this._lastColumns.map(column => ([{
+                text: `📂 ${column.title}`,
+                callback_data: `sub_final_${label}|${column.status}`
+            }]))
+        };
+
+        this.#bot.telegram.sendMessage(
+            chatId,
+            `📂 *Выберите колонку для метки "${label}":*`,
+            {
+                parse_mode: 'Markdown',
+                reply_markup: keyboard
+            }
+        );
+    }
+
+    getColumnTitle(status) {
+        return this.#getColumnName(status);
+    }
+
+    sendSubscriptionMenu(chatId) {
+        // Старый метод, оставляем для совместимости или удаляем если не нужен
+        this.sendLabelSelectionMenu(chatId);
     }
 
     #sendFormattedColumnStatus(chatId, column) {
@@ -265,8 +298,6 @@ export class KanbanWebSocketServer {
                 message += '📭 Карточек нет';
             }
 
-            message += '\n🔄 Используйте /status для обновления';
-
             this.#bot.telegram.sendMessage(
                 chatId,
                 message,
@@ -287,8 +318,6 @@ export class KanbanWebSocketServer {
             columns.forEach((column, index) => {
                 statusMessage += `*${index + 1}. ${column.title}* - ${column.taskCount} карточек\n`;
             });
-
-            statusMessage += '\n🔄 Используйте /status для обновления';
 
             this.#bot.telegram.sendMessage(
                 chatId,
@@ -363,15 +392,16 @@ export class KanbanWebSocketServer {
     }
 
     // Запрос общего статуса
-    requestStatus(chatId) {
+    requestStatus(chatId, reason = null) {
         const request = {
             type: 'REQUEST_STATUS',
             chatId: chatId,
+            reason: reason,
             timestamp: new Date().toISOString()
         };
 
         this.broadcast(request);
-        console.log('📤 Status request sent to clients');
+        console.log(`📤 Status request sent to clients (Reason: ${reason})`);
     }
 
     // Запрос статуса конкретной колонки

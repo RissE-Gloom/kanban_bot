@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import { KanbanWebSocketServer } from './websocket.js';
 
 export class KanbanBot {
@@ -16,9 +16,6 @@ export class KanbanBot {
 
     #setupCommands() {
         this.#bot.command('start', (ctx) => this.#handleStart(ctx));
-        this.#bot.command('status', (ctx) => this.#handleStatus(ctx));
-        this.#bot.command('help', (ctx) => this.#handleHelp(ctx));
-        this.#bot.command('connections', (ctx) => this.#handleConnections(ctx));
         this.#bot.command('chatid', (ctx) => this.#handleChatId(ctx));
         this.#bot.command('notifications', (ctx) => this.#handleManageNotifications(ctx));
     }
@@ -50,14 +47,17 @@ export class KanbanBot {
             } else if (callbackData === 'manage_notifications') {
                 this.#handleManageNotifications(ctx);
             } else if (callbackData === 'manage_subs_start') {
-                this.#wsServer.sendSubscriptionMenu(ctx.chat.id);
+                this.#wsServer.sendLabelSelectionMenu(ctx.chat.id);
             } else if (callbackData.startsWith('status_column_')) {
                 const columnStatus = callbackData.replace('status_column_', '');
                 this.#handleColumnStatus(ctx, columnStatus);
-            } else if (callbackData.startsWith('sub_label_')) {
-                const parts = callbackData.replace('sub_label_', '').split('|');
+            } else if (callbackData.startsWith('sub_select_label_')) {
+                const label = callbackData.replace('sub_select_label_', '');
+                this.#wsServer.sendColumnSelectionMenu(ctx.chat.id, label);
+            } else if (callbackData.startsWith('sub_final_')) {
+                const parts = callbackData.replace('sub_final_', '').split('|');
                 this.#wsServer.addSubscription(ctx.from.id, ctx.from.username, parts[0], parts[1]);
-                ctx.reply(`✅ Вы подписаны на метку "${parts[0]}" в колонке "${parts[1]}"`);
+                ctx.reply(`✅ Вы подписаны на метку "${parts[0]}" в колонке "${this.#wsServer.getColumnTitle(parts[1])}"`);
             }
 
             // Ответим на callback чтобы убрать "часики"
@@ -87,7 +87,7 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '📂 Открыть доску', url: 'https://necromancertasks.onrender.com/' }],
-                    [{ text: '📊 Статус', callback_data: 'status_all' }]
+                    [{ text: '🔔 Подписаться на уведомления', callback_data: 'manage_subs_start' }]
                 ]
             }
         });
@@ -95,18 +95,28 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
 
     #handleStatus = async (ctx) => {
         try {
-            const clientCount = this.#wsServer.getClientCount();
+            // Сохраняем сообщение, которое будем обновлять
+            let statusMessage;
+            ctx.reply('🔍 Запрашиваю статус...', { parse_mode: 'Markdown' })
+                .then(msg => {
+                    statusMessage = msg;
+                })
+                .catch(console.error);
 
             this.#wsServer.requestStatus(ctx.chat.id);
 
             // Таймаут на ответ
             setTimeout(() => {
                 if (this.#pendingStatusRequests.has(ctx.chat.id)) {
-                    ctx.reply(
-                        '⏰ *Не получен ответ от Kanban доски*\n\nПроверьте что доска открыта в браузере.',
-                        { parse_mode: 'Markdown' }
-                    ).catch(console.error);
-
+                    if (statusMessage) {
+                        ctx.telegram.editMessageText(
+                            ctx.chat.id,
+                            statusMessage.message_id,
+                            null,
+                            '⏰ *Не получен ответ от Kanban доски*\n\nПроверьте что доска открыта в браузере.',
+                            { parse_mode: 'Markdown' }
+                        ).catch(console.error);
+                    }
                     this.#pendingStatusRequests.delete(ctx.chat.id);
                 }
             }, 5000);
@@ -141,8 +151,8 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
     }
 
     #handleManageNotifications = (ctx) => {
-        // Запрашиваем актуальный статус для формирования меню подписки
-        this.#wsServer.requestStatus(ctx.chat.id);
+        // Запрашиваем актуальный статус с флагом 'subscription'
+        this.#wsServer.requestStatus(ctx.chat.id, 'subscription');
         ctx.reply('🔍 Запрашиваю список меток и колонок для настройки уведомлений...');
     }
 
@@ -163,9 +173,10 @@ https://necromancertasks.onrender.com/ - перейти напрямую на с
 
     #setupErrorHandling() {
         this.#bot.catch((error, ctx) => {
-            // Bot service redeploy trigger: 2026-01-24T20:13:00
             console.error('Bot error:', error);
-            ctx.reply('❌ Произошла ошибка при обработке команды');
+            if (ctx && typeof ctx.reply === 'function') {
+                ctx.reply('❌ Произошла ошибка при обработке команды').catch(console.error);
+            }
         });
     }
 
