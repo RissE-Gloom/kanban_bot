@@ -17,13 +17,29 @@ const db = getDatabase(app);
 export const getLabels = async () => {
     try {
         const dbRef = ref(db);
+        // Сначала пытаемся получить специальный список меток
         const snapshot = await get(child(dbRef, 'projects/default/labels'));
-        if (snapshot.exists()) {
+
+        if (snapshot.exists() && Array.isArray(snapshot.val()) && snapshot.val().length > 0) {
             return snapshot.val();
-        } else {
-            console.log("No labels available in Firebase");
-            return [];
         }
+
+        // Если списка нет, вытаскиваем уникальные метки прямо из задач
+        console.log("📝 Labels list not found, extracting from tasks...");
+        const tasksSnapshot = await get(child(dbRef, 'projects/default/tasks'));
+        if (tasksSnapshot.exists()) {
+            const tasks = tasksSnapshot.val();
+            const labels = new Set();
+            Object.values(tasks).forEach(task => {
+                if (task.label) labels.add(task.label);
+            });
+            const uniqueLabels = Array.from(labels).sort();
+            console.log("✅ Extracted labels:", uniqueLabels);
+            return uniqueLabels;
+        }
+
+        console.log("No labels found in Firebase (checked both list and tasks)");
+        return [];
     } catch (error) {
         console.error("Error fetching labels from Firebase:", error);
         return [];
