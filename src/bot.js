@@ -47,7 +47,7 @@ export class KanbanBot {
             } else if (callbackData === 'manage_notifications') {
                 this.#handleManageNotifications(ctx);
             } else if (callbackData === 'manage_subs_start') {
-                this.#handleManageNotifications(ctx);
+                this.#wsServer.sendLabelSelectionMenu(ctx.chat.id);
             } else if (callbackData.startsWith('status_column_')) {
                 const columnStatus = callbackData.replace('status_column_', '');
                 this.#handleColumnStatus(ctx, columnStatus);
@@ -151,9 +151,7 @@ https://necromancertasks.onrender.com/ - Сайт если бот не загр�
     }
 
     #handleManageNotifications = (ctx) => {
-        // Запрашиваем актуальный статус с флагом 'subscription'
-        this.#wsServer.requestStatus(ctx.chat.id, 'subscription');
-        ctx.reply('🔍 Запрашиваю список меток и колонок для настройки уведомлений...');
+        this.#wsServer.sendLabelSelectionMenu(ctx.chat.id);
     }
 
     #handleHelp = (ctx) => {
