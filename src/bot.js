@@ -56,7 +56,8 @@ export class KanbanBot {
                 this.#wsServer.sendColumnSelectionMenu(ctx.chat.id, label);
             } else if (callbackData.startsWith('sub_final_')) {
                 const parts = callbackData.replace('sub_final_', '').split('|');
-                this.#wsServer.addSubscription(ctx.from.id, ctx.from.username, parts[0], parts[1]);
+                const username = ctx.from.username || ctx.from.first_name || 'User';
+                this.#wsServer.addSubscription(ctx.from.id, username, parts[0], parts[1]);
                 ctx.reply(`✅ Вы подписаны на метку "${parts[0]}" в колонке "${this.#wsServer.getColumnTitle(parts[1])}"`);
             }
 

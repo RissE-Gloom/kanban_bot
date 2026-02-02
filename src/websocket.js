@@ -40,11 +40,18 @@ export class KanbanWebSocketServer {
     }
 
     addSubscription(userId, username, label, column) {
-        const key = `${label}|${column}`;
+        // Нормализуем метку для ключа
+        const normalizedLabel = (label || '').trim().toUpperCase();
+        console.log(`📥 Adding subscription: User=${username}, OriginalLabel="${label}", Normalized="${normalizedLabel}", Column=${column}`);
+
+        const key = `${normalizedLabel}|${column}`;
         if (!this.#subscriptions[key]) this.#subscriptions[key] = [];
         if (!this.#subscriptions[key].find(s => s.userId === userId)) {
             this.#subscriptions[key].push({ userId, username });
             this.#saveSubscriptions();
+            console.log(`✅ Subscription saved for key: "${key}". Current subs:`, this.#subscriptions[key]);
+        } else {
+            console.log(`ℹ️ User already subscribed to key: "${key}"`);
         }
     }
 
@@ -119,8 +126,17 @@ export class KanbanWebSocketServer {
     }
 
     #formatTaskMovedMessage(message) {
-        const key = `${message.task.label}|${message.toStatus}`;
+        // Нормализуем метку задачи для поиска (как при сохранении подписки)
+        const taskLabel = (message.task.label || '').trim().toUpperCase();
+        const key = `${taskLabel}|${message.toStatus}`;
+
+        console.log(`🔍 Checking mentions for key: "${key}"`);
+        console.log(`📋 Task: "${message.task.title}", Original Label: "${message.task.label}", Target Status: "${message.toStatus}"`);
+
         const subs = this.#subscriptions[key] || [];
+        console.log(`👥 Found ${subs.length} subscribers for key: "${key}"`);
+        console.log(`👥 Found ${subs.length} subscribers for this key`);
+
         const mentions = subs.map(s => `@${s.username}`).join(' ');
 
         return `
@@ -240,6 +256,10 @@ export class KanbanWebSocketServer {
 
     #handleError(ws, error) {
         this.#clients.delete(ws);
+    }
+
+    getColumnTitle(status) {
+        return this.#getColumnName(status);
     }
 
     requestStatus(chatId, reason = null) {
