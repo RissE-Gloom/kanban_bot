@@ -2,6 +2,7 @@ import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import fs from 'fs';
 import path from 'path';
+import { getLabels, getColumns } from './firebase.js';
 
 export class KanbanWebSocketServer {
     #wss = null;
@@ -224,14 +225,22 @@ export class KanbanWebSocketServer {
         }
     }
 
-    sendLabelSelectionMenu(chatId) {
-        if (!this._lastLabels) {
-            this.#bot.telegram.sendMessage(chatId, '❌ Список меток пуст или еще не загружен. Попробуйте позже.');
+    async sendLabelSelectionMenu(chatId) {
+        let labels = this._lastLabels;
+
+        if (!labels || labels.length === 0) {
+            console.log('🔄 Fetching labels from Firebase...');
+            labels = await getLabels();
+            this._lastLabels = labels;
+        }
+
+        if (!labels || labels.length === 0) {
+            this.#bot.telegram.sendMessage(chatId, '❌ Список меток пуст. Пожалуйста, добавьте их на доске.');
             return;
         }
 
         const keyboard = {
-            inline_keyboard: this._lastLabels.map(label => ([{
+            inline_keyboard: labels.map(label => ([{
                 text: `🏷️ ${label}`,
                 callback_data: `sub_select_label_${label}`
             }]))
@@ -247,14 +256,22 @@ export class KanbanWebSocketServer {
         );
     }
 
-    sendColumnSelectionMenu(chatId, label) {
-        if (!this._lastColumns) {
-            this.#bot.telegram.sendMessage(chatId, '❌ Список колонок пуст или еще не загружен.');
+    async sendColumnSelectionMenu(chatId, label) {
+        let columns = this._lastColumns;
+
+        if (!columns || columns.length === 0) {
+            console.log('🔄 Fetching columns from Firebase...');
+            columns = await getColumns();
+            this._lastColumns = columns;
+        }
+
+        if (!columns || columns.length === 0) {
+            this.#bot.telegram.sendMessage(chatId, '❌ Список колонок пуст.');
             return;
         }
 
         const keyboard = {
-            inline_keyboard: this._lastColumns.map(column => ([{
+            inline_keyboard: columns.map(column => ([{
                 text: `📂 ${column.title}`,
                 callback_data: `sub_final_${label}|${column.status}`
             }]))
