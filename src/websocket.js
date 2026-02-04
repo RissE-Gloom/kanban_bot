@@ -160,12 +160,9 @@ export class KanbanWebSocketServer {
     }
 
     async sendLabelSelectionMenu(chatId) {
-        let labels = this._lastLabels;
-
-        if (!labels || labels.length === 0) {
-            labels = await getLabels();
-            this._lastLabels = labels;
-        }
+        // Всегда запрашиваем свежие метки из БД
+        let labels = await getLabels();
+        this._lastLabels = labels;
 
         if (!labels || labels.length === 0) {
             this.#bot.telegram.sendMessage(chatId, '❌ Список меток пуст. Пожалуйста, добавьте их на доске.');
@@ -189,11 +186,9 @@ export class KanbanWebSocketServer {
     }
 
     async sendColumnSelectionMenu(chatId, label) {
-        let columns = this._lastColumns;
-        if (!columns || columns.length === 0) {
-            columns = await getColumns();
-            this._lastColumns = columns;
-        }
+        // Всегда запрашиваем свежие колонки
+        let columns = await getColumns();
+        this._lastColumns = columns;
 
         if (!columns || columns.length === 0) {
             this.#bot.telegram.sendMessage(chatId, '❌ Список колонок пуст.');
