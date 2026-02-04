@@ -1,15 +1,15 @@
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
-import fs from 'fs';
-import path from 'path';
-import { getLabels, getColumns } from './firebase.js';
+// import fs from 'fs'; // Removed fs
+// import path from 'path'; // Removed path
+import { getLabels, getColumns, getSubscriptions, saveSubscriptions } from './firebase.js';
 
 export class KanbanWebSocketServer {
     #wss = null;
     #clients = new Set();
     #bot = null;
     #notificationChatId = null;
-    #subscriptionsPath = path.resolve('subscriptions.json');
+    // #subscriptionsPath = path.resolve('subscriptions.json'); // Removed
     #subscriptions = {};
     _lastLabels = [];
     _lastColumns = [];
@@ -20,23 +20,13 @@ export class KanbanWebSocketServer {
         this.#loadSubscriptions();
     }
 
-    #loadSubscriptions() {
-        if (fs.existsSync(this.#subscriptionsPath)) {
-            try {
-                this.#subscriptions = JSON.parse(fs.readFileSync(this.#subscriptionsPath, 'utf8'));
-            } catch (e) {
-                console.error('Error loading subscriptions:', e);
-                this.#subscriptions = {};
-            }
-        }
+    async #loadSubscriptions() {
+        this.#subscriptions = await getSubscriptions();
+        console.log('✅ Subscriptions loaded from Firebase:', Object.keys(this.#subscriptions).length, 'keys');
     }
 
-    #saveSubscriptions() {
-        try {
-            fs.writeFileSync(this.#subscriptionsPath, JSON.stringify(this.#subscriptions, null, 2));
-        } catch (e) {
-            console.error('Error saving subscriptions:', e);
-        }
+    async #saveSubscriptions() {
+        await saveSubscriptions(this.#subscriptions);
     }
 
     addSubscription(userId, username, label, column) {

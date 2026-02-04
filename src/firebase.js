@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, child } from "firebase/database";
+import { getDatabase, ref, get, child, set } from "firebase/database";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAqnTZXQDuCF3QqxhOhwTRXCulDaLO_iUI",
@@ -59,5 +59,29 @@ export const getColumns = async () => {
     } catch (error) {
         console.error("Error fetching columns from Firebase:", error);
         return [];
+    }
+};
+
+export const getSubscriptions = async () => {
+    try {
+        const dbRef = ref(db);
+        const snapshot = await get(child(dbRef, 'projects/default/subscriptions'));
+        if (snapshot.exists()) {
+            return snapshot.val();
+        }
+        return {};
+    } catch (error) {
+        console.error("Error fetching subscriptions from Firebase:", error);
+        return {};
+    }
+};
+
+export const saveSubscriptions = async (subscriptions) => {
+    try {
+        await set(ref(db, 'projects/default/subscriptions'), subscriptions);
+        return true;
+    } catch (error) {
+        console.error("Error saving subscriptions to Firebase:", error);
+        return false;
     }
 };
