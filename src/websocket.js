@@ -101,10 +101,10 @@ export class KanbanWebSocketServer {
         }
     }
 
-    #processMessage(message, ws) {
+    async #processMessage(message, ws) {
         switch (message.type) {
             case 'TASK_MOVED':
-                this.#sendTelegramNotification(this.#formatTaskMovedMessage(message));
+                this.#sendTelegramNotification(await this.#formatTaskMovedMessage(message));
                 break;
             case 'TASK_CREATED':
                 this.#sendTelegramNotification(this.#formatTaskCreatedMessage(message));
@@ -115,17 +115,20 @@ export class KanbanWebSocketServer {
         }
     }
 
-    #formatTaskMovedMessage(message) {
+    async #formatTaskMovedMessage(message) {
+        // Перезагружаем подписки из Firebase перед проверкой
+        await this.#loadSubscriptions();
+
         // Нормализуем метку задачи для поиска (как при сохранении подписки)
         const taskLabel = (message.task.label || '').trim().toUpperCase();
         const key = `${taskLabel}|${message.toStatus}`;
 
         console.log(`🔍 Checking mentions for key: "${key}"`);
         console.log(`📋 Task: "${message.task.title}", Original Label: "${message.task.label}", Target Status: "${message.toStatus}"`);
+        console.log(`📦 All subscription keys:`, Object.keys(this.#subscriptions));
 
         const subs = this.#subscriptions[key] || [];
-        console.log(`👥 Found ${subs.length} subscribers for key: "${key}"`);
-        console.log(`👥 Found ${subs.length} subscribers for this key`);
+        console.log(`👥 Found ${subs.length} subscribers for key: "${key}"`, subs);
 
         const mentions = subs.map(s => `@${s.username}`).join(' ');
 

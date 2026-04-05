@@ -17,29 +17,38 @@ const db = getDatabase(app);
 export const getLabels = async () => {
     try {
         const dbRef = ref(db);
-        // Сначала пытаемся получить специальный список меток
-        const snapshot = await get(child(dbRef, 'projects/default/labels'));
 
-        if (snapshot.exists() && Array.isArray(snapshot.val()) && snapshot.val().length > 0) {
-            return snapshot.val();
+        // Запрашиваем параллельно и список меток, и задачи
+        const [labelsSnapshot, tasksSnapshot] = await Promise.all([
+            get(child(dbRef, 'projects/default/labels')),
+            get(child(dbRef, 'projects/default/tasks'))
+        ]);
+
+        const allLabels = new Set();
+
+        // 1. Добавляем метки из списока (Manage Labels)
+        if (labelsSnapshot.exists()) {
+            const val = labelsSnapshot.val();
+            console.log("🔍 DEBUG: Raw Labels Snapshot:", JSON.stringify(val));
+            if (Array.isArray(val)) {
+                val.forEach(l => { if (l) allLabels.add(l) });
+            } else if (typeof val === 'object') {
+                Object.values(val).forEach(l => { if (l) allLabels.add(l) });
+            }
         }
 
-        // Если списка нет, вытаскиваем уникальные метки прямо из задач
-        console.log("📝 Labels list not found, extracting from tasks...");
-        const tasksSnapshot = await get(child(dbRef, 'projects/default/tasks'));
+        // 2. Добавляем метки, которые есть на реальных задачах (даже если их нет в списке)
         if (tasksSnapshot.exists()) {
             const tasks = tasksSnapshot.val();
-            const labels = new Set();
             Object.values(tasks).forEach(task => {
-                if (task.label) labels.add(task.label);
+                if (task.label) allLabels.add(task.label);
             });
-            const uniqueLabels = Array.from(labels).sort();
-            console.log("✅ Extracted labels:", uniqueLabels);
-            return uniqueLabels;
         }
 
-        console.log("No labels found in Firebase (checked both list and tasks)");
-        return [];
+        const uniqueLabels = Array.from(allLabels).sort();
+        console.log("✅ Combined labels (List + Tasks):", uniqueLabels);
+        return uniqueLabels;
+
     } catch (error) {
         console.error("Error fetching labels from Firebase:", error);
         return [];
